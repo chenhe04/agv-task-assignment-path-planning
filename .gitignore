@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 大型数据文件（GitHub限制100MB）
+yaml/qfunction.npy
+
+# 临时输出文件
+yaml/output_*_temp.yaml
+
+# OS
+.DS_Store
+Thumbs.db
