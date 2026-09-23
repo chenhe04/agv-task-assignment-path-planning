@@ -12,7 +12,7 @@ from itertools import permutations
 import planning as pn
 
 # ========== 实验配置 ==========
-NUM_RUNS = 1
+NUM_RUNS = 10
 # 默认运行次数
 BASE_SEED = 42  # 基础随机种子
 # ==================================

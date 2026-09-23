@@ -41,16 +41,23 @@ def load_map_agv_task(yaml_path):
     return G, agvs, initial_tasks, delayed_tasks, grid
 
 
-def calc_astar_cost(G, start, goal):
+def calc_astar_cost(G, start, goal, cache=None):
+    key = (start, goal)
+    if cache is not None and key in cache:
+        return cache[key]
     try:
         if start not in G or goal not in G:
-            return float('inf')
-        path = nx.astar_path(G, start, goal)
-        return len(path) - 1
+            result = float('inf')
+        else:
+            path = nx.astar_path(G, start, goal)
+            result = len(path) - 1
     except nx.NetworkXNoPath:
-        return float('inf')
+        result = float('inf')
     except Exception:
-        return float('inf')
+        result = float('inf')
+    if cache is not None:
+        cache[key] = result
+    return result
 
 
 def init_population(num_agv, num_tasks, pop_size):
@@ -106,7 +113,7 @@ def mutate(indiv):
     indiv[idx1], indiv[idx2] = indiv[idx2], indiv[idx1]
 
 
-def evaluate_with_completion_time(individual, tasks, agv_states, G):
+def evaluate_with_completion_time(individual, tasks, agv_states, G, cache=None):
     completion_times = []
     total_completion = 0
 
@@ -114,53 +121,54 @@ def evaluate_with_completion_time(individual, tasks, agv_states, G):
         if task_id < 0 or task_id >= len(tasks):
             completion_times.append(0)
             continue
-            
+
         task = tasks[task_id]
         current_pos = agv_states[agv_id]['position']
-        
-        dist_to_pickup = calc_astar_cost(G, current_pos, task['pickup'])
-        dist_to_dropoff = calc_astar_cost(G, task['pickup'], task['dropoff'])
+
+        dist_to_pickup = calc_astar_cost(G, current_pos, task['pickup'], cache)
+        dist_to_dropoff = calc_astar_cost(G, task['pickup'], task['dropoff'], cache)
         completion_time = dist_to_pickup + dist_to_dropoff + 2
         completion_times.append(completion_time)
         total_completion += completion_time
-    
+
     return max(completion_times) + total_completion / 1000 if completion_times else 0
 
 
-def genetic_algorithm(G, tasks, agv_states, generations=50, pop_size=50):
+def genetic_algorithm(G, tasks, agv_states, generations=50, pop_size=50, mutation_rate=0.5):
     num_agv = len(agv_states)
     num_tasks = len(tasks)
 
-    print(f"  [GA内部確認] 世代数: {generations}, 個体数: {pop_size}")
-    
+    print(f"  [GA内部確認] 世代数: {generations}, 個体数: {pop_size}, 変異率: {mutation_rate}")
+
+    cache = {}  # 本次GA运行内的A*距离缓存（G固定，键为(start,goal)）
     population = init_population(num_agv, num_tasks, pop_size)
-    
+
     for gen in range(generations):
-        population.sort(key=lambda ind: evaluate_with_completion_time(ind, tasks, agv_states, G))
-        
+        population.sort(key=lambda ind: evaluate_with_completion_time(ind, tasks, agv_states, G, cache))
+
         elite_size = pop_size // 2
         next_gen = copy.deepcopy(population[:elite_size])
-        
+
         while len(next_gen) < pop_size:
             p1, p2 = random.sample(population[:elite_size], 2)
             p1, p2 = copy.deepcopy(p1), copy.deepcopy(p2)
             c1, c2 = crossover(p1, p2)
-            if random.random() < 0.5:
+            if random.random() < mutation_rate:
                 mutate(c1)
-            if random.random() < 0.5:
+            if random.random() < mutation_rate:
                 mutate(c2)
             next_gen.extend([c1, c2])
-        
+
         population = copy.deepcopy(next_gen[:pop_size])
-    
-    best = min(population, key=lambda ind: evaluate_with_completion_time(ind, tasks, agv_states, G))
-    best_cost = evaluate_with_completion_time(best, tasks, agv_states, G)
-    
+
+    best = min(population, key=lambda ind: evaluate_with_completion_time(ind, tasks, agv_states, G, cache))
+    best_cost = evaluate_with_completion_time(best, tasks, agv_states, G, cache)
+
     result = [[] for _ in range(num_agv)]
     for agv_id, task_id in enumerate(best):
         if task_id >= 0:
             result[agv_id].append(task_id)
-    
+
     return result, best_cost
 
 

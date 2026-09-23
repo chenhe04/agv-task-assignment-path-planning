@@ -82,10 +82,23 @@ def run_paper_method_ga(
 
     G, agvs, _, _, grid = load_map_agv_task(MAP_FILE)
 
-    agv_states = [{'agv_id': i, 'position': tuple(agv_starts[i])} for i in range(len(agv_starts))]
+    # ========== 坐标约定修复 ==========
+    # load_map_agv_task 用 nx.grid_2d_graph(height, width) 建图，节点坐标是 (y, x)；
+    # 而 agv_starts / tasks 来自 instance.yaml，是 (x, y) 格式。
+    # 因此在喂给 GA 之前，需要把坐标转置为 (y, x)，否则 A* 成本会查错格子、大量返回 inf。
+    agv_states = [
+        {'agv_id': i, 'position': (int(agv_starts[i][1]), int(agv_starts[i][0]))}
+        for i in range(len(agv_starts))
+    ]
+    ga_tasks = [
+        {'pickup': (int(t['pickup'][1]), int(t['pickup'][0])),
+         'dropoff': (int(t['dropoff'][1]), int(t['dropoff'][0]))}
+        for t in tasks
+    ]
+    # ====================================
 
     best_assignment, best_cost = genetic_algorithm(
-        G, tasks, agv_states,
+        G, ga_tasks, agv_states,
         generations=generations,
         pop_size=pop_size,
         mutation_rate=mutation_rate
