@@ -122,7 +122,7 @@ def run_paper_method_nearest(agv_starts, tasks):
 
     # 贪心分配：每次选择距离最近的AGV-任务对
     assigned_tasks = set()
-    order = []
+    assignment = [None] * n_agvs  # assignment[agv_idx] = task_idx，按AGV索引记录
     remaining_agvs = list(range(n_agvs))
 
     for _ in range(min(n_agvs, n_tasks)):
@@ -140,8 +140,11 @@ def run_paper_method_nearest(agv_starts, tasks):
 
         if best_task_idx is not None:
             assigned_tasks.add(best_task_idx)
-            order.append(best_task_idx)
+            assignment[best_agv_idx] = best_task_idx  # 关键：记录“该AGV做该任务”
             remaining_agvs.remove(best_agv_idx)
+
+    # 按AGV索引构建任务顺序：order[i] = AGV i 要执行的任务，与 Planning 的直接映射一致
+    order = [assignment[i] for i in range(n_agvs) if assignment[i] is not None]
 
     print(f"  [最近邻法] 任务顺序: {order}")
     for idx, task_idx in enumerate(order):

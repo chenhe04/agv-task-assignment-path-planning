@@ -23,7 +23,7 @@ EXPERIMENT_SIZE = 'small'  # 可选: 'small', 'medium', 'large'
 
 # ========== 任务位置随机种子 ==========
 # 改变此值即可生成不同的任务位置布局（用于多组实验）
-TASK_SEED = 42
+TASK_SEED = 1
 # ======================================
 
 # 实验规模配置（包含布局参数）
@@ -33,66 +33,84 @@ SIZE_CONFIG = {
         'height': 10,
         'num_agvs': 3,
         'num_tasks': 3,
-        'num_vertical_aisles': 3,      # 3条垂直通道
+        'num_vertical_aisles': 2,      # 3→2：容纳2格宽通道
         'num_main_corridors': 1,       # 1条中央主干道
-        'aisle_width': 1,              # 窄通道
-        'corridor_width': 1            # 窄主干道
+        'aisle_width': 2,              # 1→2：垂直通道2格宽（可会车）
+        'corridor_width': 2,           # 1→2：主通道2格宽（可会车）
+        'passable_aisle': True         # 启用可会车布局
     },
     'medium': {
         'width': 15,
         'height': 15,
         'num_agvs': 5,
         'num_tasks': 5,
-        'num_vertical_aisles': 4,      # 4条垂直通道
+        'num_vertical_aisles': 3,      # 4→3：容纳2格宽通道+货架
         'num_main_corridors': 2,       # 2条主干道
-        'aisle_width': 1,              # 窄通道
-        'corridor_width': 1
+        'aisle_width': 2,              # 1→2：可会车
+        'corridor_width': 2,           # 1→2：可会车
+        'passable_aisle': True         # 启用可会车布局
     },
     'large': {
         'width': 20,
         'height': 20,
         'num_agvs': 7,
         'num_tasks': 7,
-        'num_vertical_aisles': 6,      # 6条垂直通道
+        'num_vertical_aisles': 4,      # 6→4：加大通道间距，容纳2格宽通道+货架
         'num_main_corridors': 3,       # 3条主干道
-        'aisle_width': 1,
-        'corridor_width': 1
+        'aisle_width': 2,              # 1→2：垂直通道2格宽（可会车）
+        'corridor_width': 2,           # 1→2：主通道2格宽（可会车）
+        'passable_aisle': True         # 启用可会车布局
     },
 }
 
 
 def get_traditional_aisle_obstacles(width, height, num_vertical_aisles, num_main_corridors, aisle_width,
-                                    corridor_width):
+                                    corridor_width, passable_aisle=False):
     """
     传统通道式仓库布局（工业标准）
 
-    特点：
-    - 平行货架行（Storage Rows）
-    - 垂直拣货通道（Picking Aisles）
-    - 水平主通道（Main Corridor）
-    - 边界环形通道
-
-    优势：
-    ✓ 路径可预测，便于A*规划
-    ✓ 空间利用率高（60-70%）
-    ✓ 适合高密度存储
-    ✓ 80%+真实仓库采用此布局
-
-    参数:
-        width: 地图宽度
-        height: 地图高度
-        num_vertical_aisles: 垂直通道数量
-        num_main_corridors: 水平主干道数量
-        aisle_width: 垂直通道宽度（格子数）
-        corridor_width: 水平主干道宽度（格子数）
+    ... existing code ...
 
     返回:
         obstacles: 障碍物坐标列表 [[x,y], ...]
+
+    新增参数:
+        passable_aisle: True=可会车布局（通道宽度精确等于 aisle_width/corridor_width，
+                              支持2格宽通道，解决大规模窄通道死锁）
+                        False=原始布局（保持 small/medium 结果不变）
     """
     obstacles = []
 
     # 布局参数
     border_margin = 1 if width <= 10 else 2  # 边界保留距离
+
+    # ========== 新增：可会车布局（内部通道≥2格宽，允许多机错身）==========
+    if passable_aisle:
+        # 水平主干道：每条精确占 corridor_width 行，均匀分布
+        corridor_rows = set()
+        for i in range(num_main_corridors):
+            cy = (height * (i + 1)) // (num_main_corridors + 1)
+            for w in range(corridor_width):
+                corridor_rows.add(cy - corridor_width // 2 + w)
+
+        # 垂直通道：每条精确占 aisle_width 列，均匀分布
+        usable_width = width - 2 * border_margin
+        aisle_spacing = usable_width // num_vertical_aisles
+        aisle_cols = set()
+        for i in range(num_vertical_aisles):
+            ax = border_margin + i * aisle_spacing + (aisle_spacing - aisle_width) // 2
+            for w in range(aisle_width):
+                aisle_cols.add(ax + w)
+
+        for x in range(border_margin, width - border_margin):
+            for y in range(border_margin, height - border_margin):
+                if y in corridor_rows or x in aisle_cols:
+                    continue
+                obstacles.append([x, y])
+
+        obstacles = list(set(tuple(o) for o in obstacles))
+        return [list(o) for o in obstacles]
+    # ====================================================================
 
     # 计算水平主干道位置
     if num_main_corridors == 1:
@@ -303,6 +321,7 @@ def create_instance():
     num_main_corridors = config['num_main_corridors']
     aisle_width = config['aisle_width']
     corridor_width = config['corridor_width']
+    passable_aisle = config.get('passable_aisle', False)
 
     print("=" * 60)
     print("创建测试实例 - 传统通道式仓库布局")
@@ -319,7 +338,7 @@ def create_instance():
     obstacles = get_traditional_aisle_obstacles(
         width, height,
         num_vertical_aisles, num_main_corridors,
-        aisle_width, corridor_width
+        aisle_width, corridor_width, passable_aisle
     )
     print(f"障碍物数量: {len(obstacles)}")
     print(f"空间利用率: {len(obstacles) / (width * height) * 100:.1f}%")
