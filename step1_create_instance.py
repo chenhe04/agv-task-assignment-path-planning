@@ -6,8 +6,8 @@
 - 工业标准布局，80%+真实仓库使用
 
 支持三种实验规模：
-  - small:   10x10, 3 AGV, 3 任务（最优性验证）
-  - medium:  15x15, 5 AGV, 5 任务（中规模测试）
+  - small:   12x12, 3 AGV, 3 任务（最优性验证）
+  - medium:  16x16, 5 AGV, 5 任务（中规模测试）
   - large:   20x20, 7 AGV, 7 任务（大规模测试）
 """
 
@@ -15,10 +15,10 @@ import yaml
 import random
 
 # ========== 实验规模选择 ==========
-# 'small'  - 10x10, 3 AGV, 3 任务（最优性验证，完整MIP可解）
-# 'medium' - 15x15, 5 AGV, 5 任务（中规模测试，GA vs Nearest Neighbor）
+# 'small'  - 12x12, 3 AGV, 3 任务（最优性验证，完整MIP可解）
+# 'medium' - 16x16, 5 AGV, 5 任务（中规模测试，GA vs Nearest Neighbor）
 # 'large'  - 20x20, 7 AGV, 7 任务（大规模测试，GA性能极限）
-EXPERIMENT_SIZE = 'small'  # 可选: 'small', 'medium', 'large'
+EXPERIMENT_SIZE = 'large'  # 可选: 'small', 'medium', 'large'
 # ==================================
 
 # ========== 任务位置随机种子 ==========
@@ -29,8 +29,8 @@ TASK_SEED = 1
 # 实验规模配置（包含布局参数）
 SIZE_CONFIG = {
     'small': {
-        'width': 10,
-        'height': 10,
+        'width': 12,
+        'height': 12,
         'num_agvs': 3,
         'num_tasks': 3,
         'num_vertical_aisles': 2,      # 3→2：容纳2格宽通道
@@ -40,8 +40,8 @@ SIZE_CONFIG = {
         'passable_aisle': True         # 启用可会车布局
     },
     'medium': {
-        'width': 15,
-        'height': 15,
+        'width': 16,
+        'height': 16,
         'num_agvs': 5,
         'num_tasks': 5,
         'num_vertical_aisles': 3,      # 4→3：容纳2格宽通道+货架
@@ -77,7 +77,7 @@ def get_traditional_aisle_obstacles(width, height, num_vertical_aisles, num_main
     新增参数:
         passable_aisle: True=可会车布局（通道宽度精确等于 aisle_width/corridor_width，
                               支持2格宽通道，解决大规模窄通道死锁）
-                        False=原始布局（保持 small/medium 结果不变）
+                        False=原始布局（已弃用，仅为兼容保留）
     """
     obstacles = []
 

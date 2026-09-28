@@ -32,10 +32,10 @@
 
 ## 实验规模
 
-| 规模 | 网格尺寸 | AGV 数量 | 任务数量 | 用途 |
-|------|----------|----------|----------|------|
-| **Small** | 10×10 | 3 | 3 | 最优性验证（MIP 可完整求解） |
-| **Medium** | 15×15 | 5 | 5 | 启发式方法对比 |
+| 规模 | 网格尺寸  | AGV 数量 | 任务数量 | 用途 |
+|------|-------|----------|----------|------|
+| **Small** | 12×12 | 3 | 3 | 最优性验证（MIP 可完整求解） |
+| **Medium** | 16×16 | 5 | 5 | 启发式方法对比 |
 | **Large** | 20×20 | 7 | 7 | 可扩展性测试 |
 
 所有规模均采用**传统通道式仓库布局**：平行货架行 + 垂直拣货通道 + 水平主通道。
@@ -176,9 +176,10 @@ agv-task-assignment-path-planning/
 │
 ├── 配置文件
 │   ├── instance.yaml                       # 当前实验实例定义
-│   ├── map_small_traditional_aisle.yaml    # 10×10 仓库地图
-│   ├── map_medium_traditional_aisle.yaml   # 15×15 仓库地图
-│   └── map_large_traditional_aisle.yaml    # 20×20 仓库地图
+│   ├── custom_map.yaml                     # 当前实验仓库地图
+│   ├── map_small_traditional_aisle.yaml    # 小规模仓库地图
+│   ├── map_medium_traditional_aisle.yaml   # 中规模仓库地图
+│   └── map_large_traditional_aisle.yaml    # 大规模仓库地图
 │
 └── yaml/                                   # 输出结果目录
     ├── output_enum_{small,medium,large}.yaml   # 枚举法结果
@@ -199,7 +200,7 @@ agv-task-assignment-path-planning/
 
 ## 算法说明
 
-### A\* 寻路（`astar_class.py`）
+### A* 寻路（`astar_class.py`）
 采用曼哈顿距离作为启发函数，在网格地图上搜索从起点到终点的最短路径。支持自定义障碍物列表。
 
 ### Q-learning 碰撞避让（`planning.py`）

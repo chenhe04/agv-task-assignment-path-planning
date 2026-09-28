@@ -21,7 +21,7 @@ import time
 import os
 
 # ========== Configuration ==========
-MIP_MODE = 1
+MIP_MODE = 2
 # 1=Relaxed MIP, 2=Complete MIP
 TIME_LIMIT = 6000  # Gurobi time limit (seconds)
 LOAD_UNLOAD_TIME = 1  # Loading/unloading duration (time steps)

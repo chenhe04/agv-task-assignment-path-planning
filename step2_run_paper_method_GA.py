@@ -26,9 +26,9 @@ NUM_RUNS = 10  # 默认运行次数
 # ========== 地图文件自动检测 ==========
 # 优先级顺序：
 # 1. custom_map.yaml (通用)
-# 2. map_small_traditional_aisle.yaml (10x10)
-# 3. map_medium_traditional_aisle.yaml (15x15)
-# 4. map_large_traditional_aisle.yaml (20x20)
+# 2. map_small_traditional_aisle.yaml
+# 3. map_medium_traditional_aisle.yaml
+# 4. map_large_traditional_aisle.yaml
 CUSTOM_MAP_PRIORITY = [
     'custom_map.yaml',
     'map_small_traditional_aisle.yaml',
