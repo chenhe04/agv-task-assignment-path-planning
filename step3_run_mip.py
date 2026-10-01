@@ -805,17 +805,23 @@ def solve_mip_full_mapf(agv_starts, tasks, obstacles, width, height,
             )
 
     # 5. Edge conflict constraints
+    # 预计算有向相邻边集 E（与时间无关，只算一次），避免在每个 t 内重复扫描所有节点对
+    ordered_edges = [
+        (u_idx, v_idx)
+        for u_idx, u in enumerate(valid_nodes)
+        for v_idx, v in enumerate(valid_nodes)
+        if u_idx != v_idx and abs(u[0] - v[0]) + abs(u[1] - v[1]) == 1
+    ]
+    agv_pairs = [(i, j) for i in range(n_agvs) for j in range(i + 1, n_agvs)]
+
     for t in range(T):
-        for u_idx, u in enumerate(valid_nodes):
-            for v_idx, v in enumerate(valid_nodes):
-                if u != v and abs(u[0] - v[0]) + abs(u[1] - v[1]) == 1:
-                    for i in range(n_agvs):
-                        for j in range(i + 1, n_agvs):
-                            model.addConstr(
-                                x[i, u_idx, t] + x[i, v_idx, t + 1] +
-                                x[j, v_idx, t] + x[j, u_idx, t + 1] <= 3,
-                                f"edge_conflict_{i}_{j}_{u_idx}_{v_idx}_{t}"
-                            )
+        for u_idx, v_idx in ordered_edges:
+            for i, j in agv_pairs:
+                model.addConstr(
+                    x[i, u_idx, t] + x[i, v_idx, t + 1] +
+                    x[j, v_idx, t] + x[j, u_idx, t + 1] <= 3,
+                    f"edge_conflict_{i}_{j}_{u_idx}_{v_idx}_{t}"
+                )
 
     # 6. Task assignment
     for j in range(n_tasks):
