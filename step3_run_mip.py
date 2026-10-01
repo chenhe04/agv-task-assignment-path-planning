@@ -419,20 +419,24 @@ def solve_mip_relaxed(agv_starts, tasks, obstacles, width, height,
             )
 
     # 3. Movement continuity: adjacent time steps must move to adjacent nodes or stay
+    # 预计算每个节点的邻居（含自身），用流守恒形式，避免 O(n_nodes^2) 的两两禁止约束
+    node_neighbors = {}
+    for v_idx, v in enumerate(valid_nodes):
+        nbrs = [v_idx]  # 允许原地停留
+        for u_idx, u in enumerate(valid_nodes):
+            if abs(u[0] - v[0]) + abs(u[1] - v[1]) == 1:
+                nbrs.append(u_idx)
+        node_neighbors[v_idx] = nbrs
+
     for i in range(n_agvs):
         for t in range(T):
-            for v_idx, v in enumerate(valid_nodes):
-                non_neighbors = []
-                for u_idx, u in enumerate(valid_nodes):
-                    dist_uv = abs(u[0] - v[0]) + abs(u[1] - v[1])
-                    if dist_uv > 1:
-                        non_neighbors.append(u_idx)
-
-                for u_idx in non_neighbors:
-                    model.addConstr(
-                        x[i, u_idx, t] + x[i, v_idx, t + 1] <= 1,
-                        f"move_{i}_{u_idx}_{v_idx}_{t}"
-                    )
+            for v_idx in range(n_nodes):
+                model.addConstr(
+                    x[i, v_idx, t + 1] <= gp.quicksum(
+                        x[i, u_idx, t] for u_idx in node_neighbors[v_idx]
+                    ),
+                    f"move_{i}_{v_idx}_{t}"
+                )
 
     # Note: Vertex and edge conflict constraints are excluded in this relaxed model
 
@@ -773,20 +777,24 @@ def solve_mip_full_mapf(agv_starts, tasks, obstacles, width, height,
             )
 
     # 3. Movement continuity
+    # 预计算每个节点的邻居（含自身），用流守恒形式，避免 O(n_nodes^2) 的两两禁止约束
+    node_neighbors = {}
+    for v_idx, v in enumerate(valid_nodes):
+        nbrs = [v_idx]  # 允许原地停留
+        for u_idx, u in enumerate(valid_nodes):
+            if abs(u[0] - v[0]) + abs(u[1] - v[1]) == 1:
+                nbrs.append(u_idx)
+        node_neighbors[v_idx] = nbrs
+
     for i in range(n_agvs):
         for t in range(T):
-            for v_idx, v in enumerate(valid_nodes):
-                non_neighbors = []
-                for u_idx, u in enumerate(valid_nodes):
-                    dist_uv = abs(u[0] - v[0]) + abs(u[1] - v[1])
-                    if dist_uv > 1:
-                        non_neighbors.append(u_idx)
-
-                for u_idx in non_neighbors:
-                    model.addConstr(
-                        x[i, u_idx, t] + x[i, v_idx, t + 1] <= 1,
-                        f"move_{i}_{u_idx}_{v_idx}_{t}"
-                    )
+            for v_idx in range(n_nodes):
+                model.addConstr(
+                    x[i, v_idx, t + 1] <= gp.quicksum(
+                        x[i, u_idx, t] for u_idx in node_neighbors[v_idx]
+                    ),
+                    f"move_{i}_{v_idx}_{t}"
+                )
 
     # 4. Vertex conflict constraints
     for t in range(T + 1):
