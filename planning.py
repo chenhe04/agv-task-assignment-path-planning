@@ -471,6 +471,24 @@ class Planning:
                     print("[ERROR] Incomplete tasks detected, returning 0 steps "
                           "(infeasible solution)")
                     return 0, elapsed_time, False
+                # ============================================================
+                # 归一化：消除起点的强制 1 步启动等待
+                # 原因：BASE_STOP_TIME 把"途经点停留"规则误加到了起点，
+                #       而起点无装卸货需求，MIP 模型也不含此约束（t=1 即可起步）。
+                # 做法：所有 AGV 统一删除重复的起点帧（等价于整体左移 1 步）。
+                #       因所有车同步平移，相对时空关系不变，不会引入新冲突；
+                #       pickup/dropoff 的停留计数在路径后段，也不受影响。
+                # 守卫：仅当"所有" AGV 的前两帧都是起点重复时才统一删除，
+                #       避免个别车删、个别车不删导致相对时序错位。
+                # ============================================================
+                all_have_initial_wait = all(
+                    len(self.agent_pos[str(a)]) >= 2 and
+                    list(self.agent_pos[str(a)][0]) == list(self.agent_pos[str(a)][1])
+                    for a in range(self.agent_size)
+                )
+                if all_have_initial_wait:
+                    for a in range(self.agent_size):
+                        self.agent_pos[str(a)] = self.agent_pos[str(a)][1:]
 
                 # Save valid solution to file
                 output_data = {'schedule': {}}
