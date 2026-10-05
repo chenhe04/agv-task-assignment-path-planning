@@ -230,7 +230,8 @@ agv-task-assignment-path-planning/
 
 ### MIP 求解结果
 
-| 规模 | 松弛 MIP（Mode 1） | 完整 MIP（Mode 2） |
-|------|-------------------|-------------------|
-| Small | ![松弛-Small](agv_paths_small_gurobiRelaxed.gif) | ![完整-Small](agv_paths_small_gurobiFull.gif) |
-| Medium | ![松弛-Medium](agv_paths_medium_gurobiRelaxed.gif) | — |
+| 规模 | 松弛 MIP（Mode 1）                                     | 完整 MIP（Mode 2）                               |
+|------|----------------------------------------------------|----------------------------------------------|
+| Small | ![松弛-Small](agv_paths_small_gurobiRelaxed.gif)     | ![完整-Small](agv_paths_small_gurobiFull.gif)  |
+| Medium | ![松弛-Medium](agv_paths_medium_gurobiRelaxed.gif)   | ![完整-Medium](agv_paths_medium_gurobiFull.gif) |
+| Large | ![松弛-Large](agv_paths_large_gurobiRelaxed.gif)     | -                                            |

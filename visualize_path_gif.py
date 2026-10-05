@@ -14,9 +14,9 @@ import argparse
 import numpy as np
 
 # ========== 全局配置 ==========
-INPUT_PATH_FILE = 'yaml/output_ga.yaml'  # ← 在这里修改输入的路径YAML文件
-OUTPUT_GIF_FILE = 'agv_paths.gif'  # ← 在这里修改输出的GIF文件名
-GIF_TITLE = "Large Scale - GA"  # ← 在这里修改GIF标题
+INPUT_PATH_FILE = 'yaml/output_nn_large.yaml'  # ← 在这里修改输入的路径YAML文件
+OUTPUT_GIF_FILE = 'agv_paths_large_nn.gif'  # ← 在这里修改输出的GIF文件名
+GIF_TITLE = "Large Scale - NN"  # ← 在这里修改GIF标题
 ANIMATION_FPS = 1  # ← 在这里修改帧率（1 FPS = 每步1秒）
 
 # 地图文件自动检测
