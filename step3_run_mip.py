@@ -21,7 +21,7 @@ import time
 import os
 
 # ========== Configuration ==========
-MIP_MODE = 2
+MIP_MODE = 1
 # 1=Relaxed MIP, 2=Complete MIP
 TIME_LIMIT = 6000  # Gurobi time limit (seconds)
 LOAD_UNLOAD_TIME = 1  # Loading/unloading duration (time steps)
@@ -581,30 +581,6 @@ def solve_mip_relaxed(agv_starts, tasks, obstacles, width, height,
 
         makespan = int(T_max.X) if T_max.X is not None else float('inf')
 
-        # Post-processing: ensure AGVs remain stationary after reaching dropoff
-        print(f"\n  Post-processing: Ensuring AGVs stay at dropoff after arrival...")
-        for agv_id in range(n_agvs):
-            assigned_tasks = [tid for tid, aid in assignment.items() if aid == agv_id]
-            if assigned_tasks:
-                task_id = assigned_tasks[0]
-                task = tasks[task_id]
-                dropoff = tuple(task['dropoff'])
-
-                first_dropoff_time = None
-                for t in range(len(paths[agv_id])):
-                    pos = (paths[agv_id][t]['x'], paths[agv_id][t]['y'])
-                    if pos == dropoff:
-                        first_dropoff_time = t
-                        break
-
-                if first_dropoff_time is not None:
-                    for t2 in range(first_dropoff_time, len(paths[agv_id])):
-                        paths[agv_id][t2]['x'] = dropoff[0]
-                        paths[agv_id][t2]['y'] = dropoff[1]
-                    print(f"    ✓ AGV{agv_id} (Task{task_id}): Stays at {dropoff} from t={first_dropoff_time}")
-                else:
-                    print(f"    ⚠ AGV{agv_id} (Task{task_id}): Dropoff {dropoff} not reached!")
-
         # Truncate paths to makespan length
         truncated_paths = {}
         for i, path in paths.items():
@@ -916,6 +892,18 @@ def solve_mip_full_mapf(agv_starts, tasks, obstacles, width, height,
             else:
                 model.addConstr(y[i, j] == 0, f"infeasible_{i}_{j}")
 
+            # 约束20：卸货完成后 AGV 必须停留在 dropoff（与启发式"停在终点"规则对齐）
+            # 一旦 z_drop[i,j,τ]=1（τ 开始卸货），则对所有 t>=τ 强制 x[i,dropoff,t]=1；
+            # 顶点/边冲突约束会自动让其他 AGV 绕行，解仍最优且无冲突。
+            for t_park in range(T + 1):
+                upper = min(t_park, T - LOAD_UNLOAD_TIME)
+                if upper >= 0:
+                    model.addConstr(
+                        x[i, dropoff_idx_node, t_park] >=
+                        gp.quicksum(z_drop[i, j, tp] for tp in range(upper + 1)),
+                        f"park_after_dropoff_{i}_{j}_{t_park}"
+                    )
+
     # 9. Completion time definition
     for i in range(n_agvs):
         for j in range(n_tasks):
@@ -963,30 +951,6 @@ def solve_mip_full_mapf(agv_starts, tasks, obstacles, width, height,
             paths[i] = path
 
         makespan = int(T_max.X) if T_max.X is not None else float('inf')
-
-        # Post-processing: ensure AGVs remain at dropoff
-        print(f"\n  Post-processing: Ensuring AGVs stay at dropoff after arrival...")
-        for agv_id in range(n_agvs):
-            assigned_tasks = [tid for tid, aid in assignment.items() if aid == agv_id]
-            if assigned_tasks:
-                task_id = assigned_tasks[0]
-                task = tasks[task_id]
-                dropoff = tuple(task['dropoff'])
-
-                first_dropoff_time = None
-                for t in range(len(paths[agv_id])):
-                    pos = (paths[agv_id][t]['x'], paths[agv_id][t]['y'])
-                    if pos == dropoff:
-                        first_dropoff_time = t
-                        break
-
-                if first_dropoff_time is not None:
-                    for t2 in range(first_dropoff_time, len(paths[agv_id])):
-                        paths[agv_id][t2]['x'] = dropoff[0]
-                        paths[agv_id][t2]['y'] = dropoff[1]
-                    print(f"    ✓ AGV{agv_id} (Task{task_id}): Stays at {dropoff} from t={first_dropoff_time}")
-                else:
-                    print(f"    ⚠ AGV{agv_id} (Task{task_id}): Dropoff {dropoff} not reached!")
 
         # Truncate paths
         truncated_paths = {}
