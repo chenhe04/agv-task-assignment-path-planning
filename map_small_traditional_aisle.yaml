@@ -159,20 +159,20 @@ map:
 tasks:
   initial:
   - dropoff:
-    - 7
-    - 2
+    - 3
+    - 3
     pickup:
-    - 5
+    - 8
     - 6
   - dropoff:
-    - 4
-    - 2
-    pickup:
-    - 8
-    - 4
-  - dropoff:
-    - 3
-    - 8
-    pickup:
-    - 4
     - 9
+    - 6
+    pickup:
+    - 8
+    - 9
+  - dropoff:
+    - 5
+    - 5
+    pickup:
+    - 7
+    - 8

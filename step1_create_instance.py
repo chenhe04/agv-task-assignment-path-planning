@@ -18,12 +18,12 @@ import random
 # 'small'  - 12x12, 3 AGV, 3 任务（最优性验证，完整MIP可解）
 # 'medium' - 16x16, 5 AGV, 5 任务（中规模测试，GA vs Nearest Neighbor）
 # 'large'  - 20x20, 7 AGV, 7 任务（大规模测试，GA性能极限）
-EXPERIMENT_SIZE = 'small'  # 可选: 'small', 'medium', 'large'
+EXPERIMENT_SIZE = 'large'  # 可选: 'small', 'medium', 'large'
 # ==================================
 
 # ========== 任务位置随机种子 ==========
 # 改变此值即可生成不同的任务位置布局（用于多组实验）
-TASK_SEED = 1
+TASK_SEED = 2
 # ======================================
 
 # 实验规模配置（包含布局参数）
