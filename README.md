@@ -92,12 +92,12 @@ python step2_run_paper_method_nearest.py
 **可调参数**（在各文件顶部修改）：
 
 | 参数 | 所在文件 | 默认值 | 说明 |
-|------|----------|--------|------|
-| `GA_GENERATIONS` | `step2_..._GA.py` | 1000 | GA 迭代代数 |
-| `GA_POP_SIZE` | `step2_..._GA.py` | 100 | 种群大小 |
-| `GA_MUTATION_RATE` | `step2_..._GA.py` | 0.7 | 变异率 |
-| `GA_RANDOM_SEED` | `step2_..._GA.py` | 42 | 随机种子基准值，每次运行自动递增（`seed = GA_RANDOM_SEED + run`） |
-| `NUM_RUNS` | 所有 step2 文件 | 10 | 独立运行次数 |
+|------|----------|-----|------|
+| `GA_GENERATIONS` | `step2_..._GA.py` | 50  | GA 迭代代数 |
+| `GA_POP_SIZE` | `step2_..._GA.py` | 50  | 种群大小 |
+| `GA_MUTATION_RATE` | `step2_..._GA.py` | 0.5 | 变异率 |
+| `GA_RANDOM_SEED` | `step2_..._GA.py` | 42  | 随机种子基准值，每次运行自动递增（`seed = GA_RANDOM_SEED + run`） |
+| `NUM_RUNS` | 所有 step2 文件 | 10  | 独立运行次数 |
 
 **输出文件：** `yaml/output_{方法}_{规模}.yaml` — 包含各 AGV 逐步位置的调度方案
 
