@@ -1,17 +1,14 @@
 # planning_with_livelock.py
 """
-集成活锁检测的多AGV路径规划模块
+集成活锁检测的多AGV路径规划模块（方案C版）
 
-基于原始planning.py扩展，新增：
-- Phase 2前增加"已到达目标"检查（方案B：治本）
-- 循环震荡活锁检测（Phase 2.5）
-- 活锁解除策略（打破对称性）
-- 动态缓冲区机制
+改进内容：
+1. 方案B：Phase 2 开头检查已到达目标的agent，跳过Q-learning（line 247-265）
+2. 方案C：get_state() 中检测其他AGV是否已完成，跳过已完成的冲突源（line 155-171）
+3. Phase 2.5：活锁检测与解除
+4. 动态缓冲区：活锁解除后短期增大缓冲区防止索引越界
 
-核心改动：
-1. Phase 2: 已到达最终目标的agent跳过Q-learning避障
-2. Phase 2.5: 活锁检测与解除（新增）
-3. Phase 1/3: 动态缓冲区（活锁解除后短期增大buffer）
+核心改动仅在 get_state() 和 main() 中，其余逻辑与 planning.py 完全一致。
 """
 
 import numpy as np
@@ -64,12 +61,13 @@ LIVELOCK_MAX_COUNT = 20
 
 class PlanningWithLivelock:
     """
-    集成活锁检测的多AGV路径规划器。
+    集成活锁检测的多AGV路径规划器（方案C版）。
 
     与原始 Planning 类的区别：
-    1. Phase 2: 已到达最终目标的agent跳过Q-learning
-    2. Phase 2.5: 活锁检测与解除
-    3. 动态缓冲区（活锁解除后短期增大buffer）
+    1. get_state() 中检测已完成的AGV，跳过冲突检测（方案C）
+    2. main() 中 Phase 2 开头检查已到达目标的agent，跳过Q-learning（方案B）
+    3. Phase 2.5 活锁检测与解除
+    4. 动态缓冲区机制
     """
 
     def __init__(self, agv_starts=None, tasks=None, output_file='yaml/ga_output.yaml'):
@@ -154,6 +152,22 @@ class PlanningWithLivelock:
 
         for i in range(self.agent_size):
             if i != agent:
+                # ========== 方案C：改进冲突检测逻辑 ==========
+                # 检查其他AGV是否已经到达最终目标并停下
+                # 如果已到达，不将其视为冲突源
+                is_completed = False
+                if (self.task_pos[i] == len(self.task_list[str(i)]) - 1 and
+                        t + BASE_STOP_TIME < len(self.agent_pos[str(i)])):
+                    final_goal = np.array(self.task_list[str(i)][-1])
+                    current_pos_i = np.array(self.agent_pos[str(i)][t + BASE_STOP_TIME])
+                    if np.all(current_pos_i == final_goal):
+                        is_completed = True
+
+                # 如果其他AGV已完成任务并停下，跳过冲突检测
+                if is_completed:
+                    continue
+                # ====================================================
+
                 for j in range(len(ACTION_SET) - 1):
                     temp = np.array(self.agent_pos[str(agent)][t]) + ACTION_SET[j]
                     if (np.all(np.array(self.agent_pos[str(i)][t]) - temp == 0) and
@@ -176,6 +190,8 @@ class PlanningWithLivelock:
     def _resolve_livelock(self, t, livelock_agents):
         """
         解除活锁：打破对称性策略
+
+        将涉及的AGV按ID排序，前半部分强制停留2步，后半部分重新规划。
         """
         print(f"    [LIVELOCK #{self.livelock_detector.livelock_count + 1}] "
               f"t={t}, 涉及AGV: {livelock_agents}")
@@ -241,11 +257,12 @@ class PlanningWithLivelock:
                         self.agent_pos[str(agent)].append(
                             self.agent_pos[str(agent)][t + BASE_STOP_TIME]
                         )
+
             # ========================================================================
             # Phase 2: Q-learning-based Collision Avoidance
             # ========================================================================
             for agent in range(self.agent_size):
-                # 【核心改动】检查agent是否处于关键停留点
+                # 【方案B】检查agent是否处于关键停留点
                 # 关键停留点：已到达任务目标点（pickup或dropoff），需要停留装卸货
                 # 如果处于关键停留点，跳过Q-learning避障，防止被推离
                 if t + BASE_STOP_TIME < len(self.agent_pos[str(agent)]):
