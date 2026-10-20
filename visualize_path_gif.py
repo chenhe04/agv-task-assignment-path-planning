@@ -14,10 +14,11 @@ import argparse
 import numpy as np
 
 # ========== 全局配置 ==========
-INPUT_PATH_FILE = 'yaml/output_nn_large.yaml'  # ← 在这里修改输入的路径YAML文件
-OUTPUT_GIF_FILE = 'agv_paths_large_nn.gif'  # ← 在这里修改输出的GIF文件名
-GIF_TITLE = "Large Scale - NN"  # ← 在这里修改GIF标题
+INPUT_PATH_FILE = 'yaml/output_ga_m3.yaml'  # ← 在这里修改输入的路径YAML文件
+OUTPUT_GIF_FILE = 'agv_paths_medium_m3_ll.gif'  # ← 在这里修改输出的GIF文件名
+GIF_TITLE = "Medium Scale - GA - case3"  # ← 在这里修改GIF标题
 ANIMATION_FPS = 1  # ← 在这里修改帧率（1 FPS = 每步1秒）
+MAX_GIF_FRAMES = 60  # ← GIF最大帧数限制（超过则截断，分母显示inf）
 
 # 地图文件自动检测
 CUSTOM_MAP_PRIORITY = [
@@ -164,14 +165,28 @@ class AGVPathAnimator:
             save_path: 输出GIF文件路径
             fps: 帧率（每秒帧数，默认1 FPS = 每步1秒）
         """
+        # 帧数截断：超过MAX_GIF_FRAMES时只生成前MAX_GIF_FRAMES帧
+        actual_frames = self.total_steps
+        truncated = False
+        if self.total_steps > MAX_GIF_FRAMES:
+            actual_frames = MAX_GIF_FRAMES
+            truncated = True
+
+        # 时间显示的分母：截断时显示inf，否则显示正常总步数
+        time_denominator = 'inf' if truncated else str(self.total_steps - 1)
+
         print(f"\n{'=' * 50}")
         print("生成AGV路径动态GIF")
         print(f"{'=' * 50}")
         print(f"  输入文件: {self.path_file}")
         print(f"  输出文件: {save_path}")
         print(f"  帧率: {fps} FPS (每步 {1 / fps:.1f} 秒)")
-        print(f"  总帧数: {self.total_steps}")
-        print(f"  预计时长: {self.total_steps / fps:.1f} 秒")
+        if truncated:
+            print(f"  总时间步: {self.total_steps} (超过{MAX_GIF_FRAMES}帧限制，截断)")
+            print(f"  GIF帧数: {actual_frames} (截断后)")
+        else:
+            print(f"  总帧数: {actual_frames}")
+        print(f"  预计时长: {actual_frames / fps:.1f} 秒")
         print(f"  标题: {self.title}")
 
         # 根据地图大小调整图形尺寸
@@ -230,14 +245,14 @@ class AGVPathAnimator:
                         agv_markers[i].set_data([], [])
 
             # 更新时间显示
-            time_text.set_text(f'Time: {frame}/{self.total_steps - 1}')
+            time_text.set_text(f'Time: {frame}/{time_denominator}')
 
             return agv_markers + [time_text]
 
         # 创建动画
         print(f"\n正在生成GIF...")
         anim = FuncAnimation(fig, animate, init_func=init,
-                             frames=self.total_steps, interval=1000 / fps,
+                             frames=actual_frames, interval=1000 / fps,
                              blit=True, repeat=False)
 
         # 保存GIF

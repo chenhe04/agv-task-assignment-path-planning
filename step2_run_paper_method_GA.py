@@ -13,9 +13,9 @@ import planning as pn
 from taskassignment_GA import load_map_agv_task, genetic_algorithm
 
 # ========== 可修改的GA参数 ==========
-GA_GENERATIONS = 1000      # 世代数（默认50，可修改）
-GA_POP_SIZE = 100         # 个体数（默认50，可修改）
-GA_MUTATION_RATE = 0.7   # 变异率（默认0.3，可修改）
+GA_GENERATIONS = 50      # 世代数（默认50，可修改）
+GA_POP_SIZE = 50         # 个体数（默认50，可修改）
+GA_MUTATION_RATE = 0.5   # 变异率（默认0.3，可修改）
 GA_RANDOM_SEED = 42      # 随机种子（默认42，可修改）
 # ==================================
 

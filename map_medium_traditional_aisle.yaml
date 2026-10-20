@@ -277,32 +277,32 @@ map:
 tasks:
   initial:
   - dropoff:
+    - 4
+    - 12
+    pickup:
+    - 7
+    - 7
+  - dropoff:
+    - 5
+    - 4
+    pickup:
+    - 8
+    - 3
+  - dropoff:
+    - 3
+    - 8
+    pickup:
+    - 12
+    - 10
+  - dropoff:
     - 12
     - 8
     pickup:
-    - 8
-    - 10
+    - 11
+    - 6
   - dropoff:
-    - 4
+    - 12
     - 3
     pickup:
-    - 8
-    - 5
-  - dropoff:
-    - 12
-    - 12
-    pickup:
-    - 12
-    - 10
-  - dropoff:
-    - 8
-    - 13
-    pickup:
-    - 7
-    - 10
-  - dropoff:
-    - 7
-    - 12
-    pickup:
-    - 12
-    - 13
+    - 2
+    - 4
