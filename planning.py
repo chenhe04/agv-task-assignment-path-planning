@@ -514,7 +514,17 @@ class Planning:
             if t > MAX_PLANNING_STEPS:
                 elapsed_time = time.time() - start_time
 
-                # Save partial solution for debugging
+                # ========== 新增：执行归一化（与成功解一致） ==========
+                all_have_initial_wait = all(
+                    len(self.agent_pos[str(a)]) >= 2 and
+                    list(self.agent_pos[str(a)][0]) == list(self.agent_pos[str(a)][1])
+                    for a in range(self.agent_size)
+                )
+                if all_have_initial_wait:
+                    for a in range(self.agent_size):
+                        self.agent_pos[str(a)] = self.agent_pos[str(a)][1:]
+                # ========================================================
+
                 output_data = {'schedule': {}}
                 for agent in range(self.agent_size):
                     schedule = []

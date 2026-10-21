@@ -126,19 +126,42 @@ class PlanningWithLivelock:
         )
 
     def astar(self, t, agent, goal, start):
-        a_star = AStar(self.col, self.row, goal, start, False, self.obs)
+        """
+        改进的A*路径规划：将停靠中的AGV视为动态障碍物
+        """
+        # ========== 新增：收集停靠中的AGV ==========
+        parked_agvs = []
+        for i in range(self.agent_size):
+            if i != agent:
+                if (self.task_pos[i] == len(self.task_list[str(i)]) - 1 and
+                        t + BASE_STOP_TIME < len(self.agent_pos[str(i)])):
+                    final_goal = np.array(self.task_list[str(i)][-1])
+                    current_pos_i = np.array(self.agent_pos[str(i)][t + BASE_STOP_TIME])
+
+                    if np.all(current_pos_i == final_goal):
+                        parked_agvs.append([int(current_pos_i[0]), int(current_pos_i[1])])
+        # ============================================
+
+        # ========== 新增：合并障碍物 ==========
+        all_obstacles = self.obs.copy()
+        all_obstacles.extend(parked_agvs)
+        # ======================================
+
+        # 调用A*，传入所有障碍物
+        a_star = AStar(self.col, self.row, goal, start, False, all_obstacles)
         path = a_star.main()
 
         if path:
             for node in path:
                 self.agent_pos[str(agent)].append([node.x, node.y])
-
             self.agent_pos[str(agent)].append([path[-1].x, path[-1].y])
-
             return True
         return False
 
     def get_state(self, t, agent):
+        """
+        恢复原版逻辑（不需要特殊处理）
+        """
         passing = np.zeros(len(ACTION_SET) - 1, dtype=int)
         state_ = np.copy(self.state)
 
@@ -152,22 +175,7 @@ class PlanningWithLivelock:
 
         for i in range(self.agent_size):
             if i != agent:
-                # ========== 方案C：改进冲突检测逻辑 ==========
-                # 检查其他AGV是否已经到达最终目标并停下
-                # 如果已到达，不将其视为冲突源
-                is_completed = False
-                if (self.task_pos[i] == len(self.task_list[str(i)]) - 1 and
-                        t + BASE_STOP_TIME < len(self.agent_pos[str(i)])):
-                    final_goal = np.array(self.task_list[str(i)][-1])
-                    current_pos_i = np.array(self.agent_pos[str(i)][t + BASE_STOP_TIME])
-                    if np.all(current_pos_i == final_goal):
-                        is_completed = True
-
-                # 如果其他AGV已完成任务并停下，跳过冲突检测
-                if is_completed:
-                    continue
-                # ====================================================
-
+                # 原版逻辑：所有AGV都参与冲突检测
                 for j in range(len(ACTION_SET) - 1):
                     temp = np.array(self.agent_pos[str(agent)][t]) + ACTION_SET[j]
                     if (np.all(np.array(self.agent_pos[str(i)][t]) - temp == 0) and
@@ -520,6 +528,17 @@ class PlanningWithLivelock:
             # Timeout check
             if t > MAX_PLANNING_STEPS:
                 elapsed_time = time.time() - start_time
+
+                # ========== 新增：执行归一化（与成功解一致） ==========
+                all_have_initial_wait = all(
+                    len(self.agent_pos[str(a)]) >= 2 and
+                    list(self.agent_pos[str(a)][0]) == list(self.agent_pos[str(a)][1])
+                    for a in range(self.agent_size)
+                )
+                if all_have_initial_wait:
+                    for a in range(self.agent_size):
+                        self.agent_pos[str(a)] = self.agent_pos[str(a)][1:]
+                # ========================================================
 
                 output_data = {'schedule': {}}
                 for agent in range(self.agent_size):
