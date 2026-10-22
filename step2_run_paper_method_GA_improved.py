@@ -1,10 +1,10 @@
 """
 目的：使用GA（遗传算法）进行任务分配
-改进：集成活锁检测与解除机制
+改进：解决阻塞（Blocking）问题
 
 对比原版step2_run_paper_method_GA.py：
-- 原版：无活锁检测，可能陷入无限等待或震荡
-- 改进版：自动检测并解除活锁，提供详细的活锁统计信息
+- 原版：A*不考虑停靠的AGV，导致阻塞
+- 改进版：在A*阶段将停靠的AGV视为动态障碍物，避免阻塞
 """
 
 import yaml
@@ -13,7 +13,7 @@ import random as rand
 import os
 import random
 import numpy as np
-from planning_with_livelock import PlanningWithLivelock
+from planning_improved import PlanningImproved
 from taskassignment_GA import load_map_agv_task, genetic_algorithm
 
 # ========== 可修改的GA参数 ==========
@@ -50,36 +50,30 @@ else:
     print(f"[自动检测] 使用地图文件: {MAP_FILE}")
 
 
-def run_paper_method_ga_with_livelock(
+def run_paper_method_ga_improved(
         agv_starts, tasks,
         generations=GA_GENERATIONS,
         pop_size=GA_POP_SIZE,
         mutation_rate=GA_MUTATION_RATE,
-        random_seed=GA_RANDOM_SEED,
-        max_livelocks=None
+        random_seed=GA_RANDOM_SEED
 ):
     """
-    使用GA进行任务分配优化，集成活锁检测
+    使用GA进行任务分配优化，使用改进的路径规划器
 
     返回值:
         step: 完成步数（不可行时返回 inf）
         valid_order: 最优任务顺序
         best_assignment: GA找到的分配方案
         total_time: 计算时间
-        livelock_stats: 活锁统计信息
     """
     if random_seed is not None:
         rand.seed(random_seed)
-
-    if max_livelocks is None:
-        max_livelocks = 15
 
     print(f"\n  [GA] 参数设置:")
     print(f"      世代数: {generations}")
     print(f"      个体数: {pop_size}")
     print(f"      变异率: {mutation_rate}")
     print(f"      随机种子: {random_seed}")
-    print(f"      最大活锁次数: {max_livelocks}")
 
     print("\n  [GA] 搜索任务分配中...")
     ga_start = time.time()
@@ -125,35 +119,29 @@ def run_paper_method_ga_with_livelock(
     valid_order = [t for t in order if t >= 0]
     print(f"  [GA] 任务顺序: {valid_order}")
 
-    print("\n  [Planning] 路径规划执行中（集成活锁检测）...")
+    print("\n  [Planning] 路径规划执行中（改进版：解决阻塞问题）...")
     planning_start = time.time()
 
     ordered_tasks = [tasks[i] for i in valid_order]
 
-    # 使用集成活锁检测的Planning模块
-    planning = PlanningWithLivelock(
+    # 使用改进的路径规划器（解决阻塞问题）
+    planning = PlanningImproved(
         agv_starts=agv_starts,
         tasks=ordered_tasks,
-        output_file='yaml/output_ga_with_livelock.yaml'
+        output_file='yaml/output_ga_improved.yaml'
     )
-
-    # 动态设置活锁容忍次数
-    planning.livelock_detector.max_livelocks = max_livelocks
 
     step, elapsed_time, dist = planning.main()
     planning_time = time.time() - planning_start
-
-    # 获取活锁统计
-    livelock_stats = planning.livelock_detector.get_statistics()
 
     if step > 0:
         print(f"  [Planning] 完成步数: {step} (计算时间: {planning_time:.2f}秒)")
         total_time = ga_time + planning_time
         print(f"  [合计] 计算时间: {total_time:.2f}秒")
-        return step, valid_order, best_assignment, total_time, livelock_stats
+        return step, valid_order, best_assignment, total_time
     else:
         print(f"  [Planning] 警告: 未找到可行路径 (step={step})")
-        return float('inf'), valid_order, best_assignment, ga_time + planning_time, livelock_stats
+        return float('inf'), valid_order, best_assignment, ga_time + planning_time
 
 
 if __name__ == "__main__":
@@ -164,7 +152,7 @@ if __name__ == "__main__":
     tasks = instance['tasks']
 
     print("=" * 80)
-    print("步骤2：GA任务分配（集成活锁检测版）")
+    print("步骤2：GA任务分配（改进版：解决阻塞问题）")
     print("=" * 80)
     print(f"AGV起点: {agv_starts}")
     print(f"任务数: {len(tasks)}")
@@ -173,20 +161,17 @@ if __name__ == "__main__":
     print(f"\n当前GA参数: 世代数={GA_GENERATIONS}, 个体数={GA_POP_SIZE}, 变异率={GA_MUTATION_RATE}")
     print(f"实验配置: 运行 {NUM_RUNS} 次，取最优结果")
     print("\n【改进亮点】")
-    print("  ✓ 活锁检测：自动检测循环震荡活锁")
-    print("  ✓ 活锁解除：打破对称性策略")
-    print("  ✓ 详细日志：记录每次活锁的类型、时间、涉及AGV")
-    print("  ✓ 统计信息：活锁次数、成功率、涉及AGV分布")
+    print("  ✓ 在A*阶段将停靠的AGV视为动态障碍物")
+    print("  ✓ 避免'避碰后又回到原路径'的阻塞问题")
+    print("  ✓ 提高成功率（预期从10%提升到80%+）")
 
     # 多次运行取最优
     best_steps_all = float('inf')
     best_order_all = None
     best_assignment_all = None
     best_time_all = None
-    best_livelock_stats = None
     all_steps = []
     all_times = []
-    all_livelock_counts = []
 
     for run in range(NUM_RUNS):
         print(f"\n{'=' * 80}")
@@ -195,7 +180,7 @@ if __name__ == "__main__":
 
         run_seed = GA_RANDOM_SEED + run
 
-        best_steps, best_order, assignment, total_time, livelock_stats = run_paper_method_ga_with_livelock(
+        best_steps, best_order, assignment, total_time = run_paper_method_ga_improved(
             agv_starts, tasks,
             generations=GA_GENERATIONS,
             pop_size=GA_POP_SIZE,
@@ -205,15 +190,13 @@ if __name__ == "__main__":
 
         all_steps.append(best_steps)
         all_times.append(total_time)
-        all_livelock_counts.append(livelock_stats['total_livelocks'])
 
         if best_steps < best_steps_all:
             best_steps_all = best_steps
             best_order_all = best_order
             best_assignment_all = assignment
             best_time_all = total_time
-            best_livelock_stats = livelock_stats
-            print(f"  ✓ 新的最优解: {best_steps} 步 (活锁次数: {livelock_stats['total_livelocks']})")
+            print(f"  ✓ 新的最优解: {best_steps} 步")
 
     # 用最优顺序重新运行多次，确保输出最优路径
     if best_steps_all != float('inf') and best_order_all is not None:
@@ -230,11 +213,11 @@ if __name__ == "__main__":
         for trial in range(10):
             planning_start_trial = time.time()
 
-            # 使用集成活锁检测的版本
-            planning = PlanningWithLivelock(
+            # 使用改进的路径规划器
+            planning = PlanningImproved(
                 agv_starts=instance['agv_starts'],
                 tasks=ordered_tasks,
-                output_file='yaml/output_ga_temp.yaml'
+                output_file='yaml/output_ga_improved_temp.yaml'
             )
 
             step, elapsed_time, dist = planning.main()
@@ -244,15 +227,15 @@ if __name__ == "__main__":
                 best_save_step = step
                 best_save_time = trial_time
                 import shutil
-                shutil.copy('yaml/output_ga_temp.yaml', 'yaml/output_ga_with_livelock.yaml')
+                shutil.copy('yaml/output_ga_improved_temp.yaml', 'yaml/output_ga_improved.yaml')
                 print(f"    试验 {trial + 1}/10: {step} 步 (时间: {trial_time:.2f}秒) ← 新的最优（已保存）")
             elif step == 0:
                 print(f"    试验 {trial + 1}/10: 0 步 (不可行)")
             else:
                 print(f"    试验 {trial + 1}/10: {step} 步 (时间: {trial_time:.2f}秒)")
 
-        if os.path.exists('yaml/output_ga_temp.yaml'):
-            os.remove('yaml/output_ga_temp.yaml')
+        if os.path.exists('yaml/output_ga_improved_temp.yaml'):
+            os.remove('yaml/output_ga_improved_temp.yaml')
 
         if best_save_step == float('inf'):
             print(f"\n  ⚠ 警告: 所有试验均未找到可行解，无法保存最优路径")
@@ -283,19 +266,6 @@ if __name__ == "__main__":
         print(f"\n  最优运行时间: {best_time_all:.4f}秒")
         print(f"  平均运行时间: {np.mean(all_times):.4f}秒")
 
-        # 活锁统计
-        print(f"\n  【活锁检测统计】")
-        print(f"    平均活锁次数: {np.mean(all_livelock_counts):.2f}")
-        print(f"    活锁次数范围: [{min(all_livelock_counts)}, {max(all_livelock_counts)}]")
-
-        if best_livelock_stats:
-            print(f"    最优运行活锁次数: {best_livelock_stats['total_livelocks']}")
-            print(f"      - 循环震荡: {best_livelock_stats['oscillation_livelocks']}")
-            print(f"      - 成功解除: {best_livelock_stats['successful_resolutions']}")
-
-            if best_livelock_stats['involved_agents']:
-                print(f"      - 涉及AGV: {best_livelock_stats['involved_agents']}")
-
         if best_assignment_all:
             print(f"\n  最优分配详情:")
             for agv_id, task_ids in enumerate(best_assignment_all):
@@ -311,15 +281,14 @@ if __name__ == "__main__":
     print(f"\n" + "=" * 80)
     print(f"【对比实验建议】")
     print("=" * 80)
-    print(f"为了验证活锁检测机制的效果，建议运行以下对比：")
+    print(f"为了验证改进效果，建议运行以下对比：")
     print(f"  1. 原版: python step2_run_paper_method_GA.py")
-    print(f"  2. 改进版: python step2_run_paper_method_GA_with_livelock.py")
+    print(f"  2. 改进版: python step2_run_paper_method_GA_improved.py")
     print(f"\n对比指标：")
     print(f"  - 成功率（可行解比例）")
     print(f"  - 平均步数（Makespan）")
-    print(f"  - 活锁次数（原版可能为0，因为未检测）")
-    print(f"  - 计算时间（改进版略长，但可接受）")
+    print(f"  - 计算时间")
     print(f"\n预期效果：")
-    print(f"  ✓ 改进版成功率应该更高（活锁被自动解除）")
-    print(f"  ✓ 改进版平均步数可能更稳定（避免活锁导致的极差结果）")
+    print(f"  ✓ 改进版成功率应该更高（阻塞问题被解决）")
+    print(f"  ✓ 改进版平均步数可能更稳定")
     print(f"  ✓ 改进版计算时间增加约10-20%（可接受范围）")

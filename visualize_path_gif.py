@@ -15,7 +15,7 @@ import numpy as np
 
 # ========== 全局配置 ==========
 INPUT_PATH_FILE = 'yaml/output_ga_m3.yaml'  # ← 在这里修改输入的路径YAML文件
-OUTPUT_GIF_FILE = 'agv_paths_m3_ga_ll.gif'  # ← 在这里修改输出的GIF文件名
+OUTPUT_GIF_FILE = 'agv_paths_m3_ga_b.gif'  # ← 在这里修改输出的GIF文件名
 GIF_TITLE = "Medium Scale - GA - case3"  # ← 在这里修改GIF标题
 ANIMATION_FPS = 1  # ← 在这里修改帧率（1 FPS = 每步1秒）
 MAX_GIF_FRAMES = 60  # ← GIF最大帧数限制（超过则截断，分母显示inf）
